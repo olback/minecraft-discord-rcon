@@ -1,0 +1,21 @@
+use {
+    serde::Deserialize,
+    std::{fs, io},
+    toml,
+};
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Config {
+    pub rcon_host: String,
+    pub rcon_port: u16,
+    pub rcon_password: String,
+    pub discord_token: String,
+    pub discord_channel: u64,
+}
+
+impl Config {
+    pub fn load() -> Result<Self, io::Error> {
+        let file_contents = fs::read_to_string("DiscordRcon.toml")?;
+        Ok(toml::from_str::<Self>(&file_contents)?)
+    }
+}
