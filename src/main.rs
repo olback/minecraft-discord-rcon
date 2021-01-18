@@ -28,11 +28,9 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
     loop {
         match discord_conn.recv_event() {
             Ok(Event::MessageCreate(message)) => {
-                // println!("{}: {}", message.author.name, message.content);
-                if message.content.starts_with("!whitelist")
-                    && message.channel_id.0 == conf.discord_channel
-                {
-                    let msg_parts = message.content.split(" ").collect::<Vec<&str>>();
+                if message.channel_id.0 == conf.discord_channel {
+                    let msg_parts = message.content.trim().split(" ").collect::<Vec<&str>>();
+                    println!("{:#?}", msg_parts);
                     match msg_parts.as_slice() {
                         &["!whitelist", username] => match rcon_conn
                             .cmd(&format!("whitelist add {}", username))
@@ -68,7 +66,7 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
                         _ => drop(
                             rcon_conn
                                 .cmd(&format!(
-                                    "say [Discord <{}>]: {}",
+                                    "say [Discord <{}>] {}",
                                     message.author.name, message.content
                                 ))
                                 .await,
