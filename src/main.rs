@@ -33,7 +33,48 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
                     && message.channel_id.0 == conf.discord_channel
                 {
                     let msg_parts = message.content.split(" ").collect::<Vec<&str>>();
-                    if msg_parts.len() == 2 {
+                    match msg_parts.as_slice() {
+                        &["!whitelist", username] => match rcon_conn
+                            .cmd(&format!("whitelist add {}", username))
+                            .await
+                        {
+                            Ok(_) => drop(discord.send_message(
+                                message.channel_id,
+                                &format!("User '{}' has been added to the whitelist.", username),
+                                "",
+                                false,
+                            )),
+                            Err(e) => drop(discord.send_message(
+                                message.channel_id,
+                                &format!("{}", e),
+                                "",
+                                false,
+                            )),
+                        },
+                        &["!list"] => match rcon_conn.cmd("list").await {
+                            Ok(list_text) => drop(discord.send_message(
+                                message.channel_id,
+                                &list_text,
+                                "",
+                                false,
+                            )),
+                            Err(e) => drop(discord.send_message(
+                                message.channel_id,
+                                &format!("{}", e),
+                                "",
+                                false,
+                            )),
+                        },
+                        _ => drop(
+                            rcon_conn
+                                .cmd(&format!(
+                                    "say [Discord <{}>]: {}",
+                                    message.author.name, message.content
+                                ))
+                                .await,
+                        ),
+                    }
+                    /*if msg_parts.len() == 2 {
                         match rcon_conn
                             .cmd(&format!("whitelist add {}", msg_parts[1]))
                             .await
@@ -61,7 +102,7 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
                             "",
                             false,
                         );
-                    }
+                    }*/
                 }
             }
             Ok(_) => {}
