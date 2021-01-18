@@ -28,7 +28,9 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
     loop {
         match discord_conn.recv_event() {
             Ok(Event::MessageCreate(message)) => {
-                if message.channel_id.0 == conf.discord_channel {
+                if message.channel_id.0 == conf.discord_channel
+                    && message.author.id != discord::model::UserId(798657174053060679)
+                {
                     let msg_parts = message.content.trim().split(" ").collect::<Vec<&str>>();
                     println!("{:#?}", msg_parts);
                     match msg_parts.as_slice() {
