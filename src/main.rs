@@ -63,6 +63,17 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
                                 false,
                             )),
                         },
+                        &["!status"] => match rcon_conn.cmd("cofh tps").await {
+                            Ok(status) => {
+                                drop(discord.send_message(message.channel_id, &status, "", false))
+                            }
+                            Err(e) => drop(discord.send_message(
+                                message.channel_id,
+                                &format!("{}", e),
+                                "",
+                                false,
+                            )),
+                        },
                         _ => drop(
                             rcon_conn
                                 .cmd(&format!(
