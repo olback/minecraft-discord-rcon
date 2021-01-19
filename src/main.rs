@@ -5,25 +5,30 @@ use {
     std::{thread::sleep, time::Duration},
 };
 
+mod combo;
 mod config;
 mod error;
 
 async fn main_loop(conf: &Config) -> Result<(), Error> {
-    let mut rcon_conn = rcon::Connection::builder()
-        .enable_minecraft_quirks(true)
-        .connect(
-            format!("{}:{}", &conf.rcon_host, &conf.rcon_port),
-            &conf.rcon_password,
-        )
-        .await?;
+    let discord = Discord::from_bot_token(&conf.discord_token)?;
+    let (mut discord_conn, _) = discord.connect()?;
+    println!("Connected to Discrod");
+
+    let mut com = combo::Combo {
+        r: rcon::Connection::builder()
+            .enable_minecraft_quirks(true)
+            .connect(
+                format!("{}:{}", &conf.rcon_host, &conf.rcon_port),
+                &conf.rcon_password,
+            )
+            .await?,
+        d: discord,
+    };
+
     println!(
         "Connected to Minecraft Server at {}:{}",
         conf.rcon_host, conf.rcon_port
     );
-
-    let discord = Discord::from_bot_token(&conf.discord_token)?;
-    let (mut discord_conn, _) = discord.connect()?;
-    println!("Connected to Discrod");
 
     loop {
         match discord_conn.recv_event() {
@@ -34,88 +39,29 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
                     let msg_parts = message.content.trim().split(" ").collect::<Vec<&str>>();
                     println!("{:#?}", msg_parts);
                     match msg_parts.as_slice() {
-                        &["!whitelist", username] => match rcon_conn
-                            .cmd(&format!("whitelist add {}", username))
-                            .await
-                        {
-                            Ok(_) => drop(discord.send_message(
+                        &["!whitelist", username] => {
+                            com.send_text(
+                                &format!("whitelist add {}", username),
                                 message.channel_id,
                                 &format!("User '{}' has been added to the whitelist.", username),
-                                "",
-                                false,
-                            )),
-                            Err(e) => drop(discord.send_message(
-                                message.channel_id,
-                                &format!("{}", e),
-                                "",
-                                false,
-                            )),
-                        },
-                        &["!list"] => match rcon_conn.cmd("list").await {
-                            Ok(list_text) => drop(discord.send_message(
-                                message.channel_id,
-                                &list_text,
-                                "",
-                                false,
-                            )),
-                            Err(e) => drop(discord.send_message(
-                                message.channel_id,
-                                &format!("{}", e),
-                                "",
-                                false,
-                            )),
-                        },
-                        &["!status"] => match rcon_conn.cmd("cofh tps").await {
-                            Ok(status) => {
-                                drop(discord.send_message(message.channel_id, &status, "", false))
-                            }
-                            Err(e) => drop(discord.send_message(
-                                message.channel_id,
-                                &format!("{}", e),
-                                "",
-                                false,
-                            )),
-                        },
-                        _ => drop(
-                            rcon_conn
+                            )
+                            .await
+                        }
+                        &["!list"] => com.send_rcon("list", message.channel_id).await,
+                        &["!status"] => com.send_rcon("cofh tps", message.channel_id).await,
+                        &["!say", _] => drop(
+                            com.r
                                 .cmd(&format!(
                                     "say [Discord <{}>] {}",
                                     message.author.name, message.content
                                 ))
                                 .await,
                         ),
+                        _ => {}
                     }
-                    /*if msg_parts.len() == 2 {
-                        match rcon_conn
-                            .cmd(&format!("whitelist add {}", msg_parts[1]))
-                            .await
-                        {
-                            Ok(_) => drop(discord.send_message(
-                                message.channel_id,
-                                &format!("User '{}' has been added to the whitelist", msg_parts[1]),
-                                "",
-                                false,
-                            )),
-                            Err(e) => {
-                                drop(discord.send_message(
-                                    message.channel_id,
-                                    &format!("{}", e),
-                                    "",
-                                    false,
-                                ));
-                                break;
-                            }
-                        }
-                    } else {
-                        let _ = discord.send_message(
-                            message.channel_id,
-                            "Usage: !whitelist <username>",
-                            "",
-                            false,
-                        );
-                    }*/
                 }
             }
+
             Ok(_) => {}
             Err(discord::Error::Closed(code, body)) => {
                 eprintln!(
