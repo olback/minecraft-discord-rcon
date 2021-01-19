@@ -53,7 +53,8 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
                             com.r
                                 .cmd(&format!(
                                     "say [Discord <{}>] {}",
-                                    message.author.name, message.content
+                                    message.author.name,
+                                    &msg_parts[1..].join(" ")
                                 ))
                                 .await,
                         ),
