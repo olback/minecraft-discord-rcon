@@ -49,7 +49,7 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
                         }
                         &["!list"] => com.send_rcon("list", message.channel_id).await,
                         &["!status"] => com.send_rcon("cofh tps", message.channel_id).await,
-                        &["!say", _] => drop(
+                        &["!say", ..] => drop(
                             com.r
                                 .cmd(&format!(
                                     "say [Discord <{}>] {}",
