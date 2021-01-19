@@ -37,7 +37,7 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
                     && message.author.id != discord::model::UserId(798657174053060679)
                 {
                     let msg_parts = message.content.trim().split(" ").collect::<Vec<&str>>();
-                    println!("{:#?}", msg_parts);
+                    // println!("{:#?}", msg_parts);
                     match msg_parts.as_slice() {
                         &["!whitelist", username] => {
                             com.send_text(
