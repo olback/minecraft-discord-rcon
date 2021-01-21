@@ -41,13 +41,13 @@ impl Combo {
 
     pub async fn is_dead(&mut self) -> bool {
         //TODO set bot status depending on server connection?
-        match self.rcon_cmd("me").await {
+        match self.rcon_cmd("me", false).await {
             Ok(_) => false,
             Err(_) => true,
         }
     }
 
-    pub async fn rcon_reconnect(&mut self, conf: &Config) {
+    pub async fn rcon_reconnect(&mut self, conf: &Config) -> rcon::Result<()> {
         match rcon::Connection::builder()
             .enable_minecraft_quirks(true)
             .connect(
@@ -59,8 +59,9 @@ impl Combo {
             Ok(new_r) => {
                 self.r = new_r;
                 self.last = Instant::now();
+                Ok(())
             }
-            Err(_) => {}
+            Err(e) => Err(e),
         }
     }
 
@@ -69,12 +70,24 @@ impl Combo {
         Ok(discord_conn)
     }
 
-    pub async fn rcon_cmd(&mut self, cmd: &str) -> rcon::Result<String> {
-        self.r.cmd(cmd).await
+    #[async_recursion::async_recursion]
+    pub async fn rcon_cmd(&mut self, cmd: &str, retry: bool) -> rcon::Result<String> {
+        match self.r.cmd(cmd).await {
+            Ok(res) => Ok(res),
+            Err(rcon::Error::Io(ioe)) => {
+                if retry {
+                    self.rcon_reconnect(&crate::CONFIG).await?;
+                    self.rcon_cmd(cmd, false).await
+                } else {
+                    Err(rcon::Error::Io(ioe))
+                }
+            }
+            Err(e) => Err(e),
+        }
     }
 
     pub async fn send_text(&mut self, command: &str, channel: ChannelId, msg: &str) {
-        match self.rcon_cmd(command).await {
+        match self.rcon_cmd(command, true).await {
             Ok(_) => {
                 drop(self.d.send_message(channel, msg, "", false));
                 self.last = Instant::now();
@@ -84,7 +97,7 @@ impl Combo {
     }
 
     pub async fn send_rcon(&mut self, command: &str, channel: ChannelId) {
-        match self.rcon_cmd(command).await {
+        match self.rcon_cmd(command, true).await {
             Ok(res) => {
                 drop(self.d.send_message(channel, &res, "", false));
                 self.last = Instant::now();
@@ -94,14 +107,11 @@ impl Combo {
     }
 
     async fn send_error(&mut self, channel: ChannelId, e: rcon::Error) {
-        match e {
-            //TODO handle IO errors
-            _ => drop(self.d.send_message(
-                channel,
-                &format!("Error processing request: \"{}\"", e),
-                "",
-                false,
-            )),
-        }
+        drop(self.d.send_message(
+            channel,
+            &format!("Error processing request: \"{:#?}\"", e),
+            "",
+            false,
+        ))
     }
 }
