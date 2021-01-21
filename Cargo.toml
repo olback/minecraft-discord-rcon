@@ -7,9 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+lazy_static = "1.4"
 tokio = { version = "1.0", features = [ "full" ] }
-#discord = "0.8"
 discord = { git = "https://github.com/SpaceManiac/discord-rs", default-features = false }
 rcon = "0.4"
 serde = { version = "1.0", features = [ "derive" ] }
 toml = "0.5"
+async-recursion = "0.3"
+

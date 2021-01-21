@@ -1,34 +1,22 @@
 use {
     config::Config,
-    discord::{model::Event, Discord},
+    discord::model::Event,
     error::Error,
+    lazy_static::lazy_static,
     std::{thread::sleep, time::Duration},
 };
+
+lazy_static! {
+    pub static ref CONFIG: Config = Config::load().expect("Failed to load config");
+}
 
 mod combo;
 mod config;
 mod error;
 
 async fn main_loop(conf: &Config) -> Result<(), Error> {
-    let discord = Discord::from_bot_token(&conf.discord_token)?;
-    let (mut discord_conn, _) = discord.connect()?;
-    println!("Connected to Discrod");
-
-    let mut com = combo::Combo {
-        r: rcon::Connection::builder()
-            .enable_minecraft_quirks(true)
-            .connect(
-                format!("{}:{}", &conf.rcon_host, &conf.rcon_port),
-                &conf.rcon_password,
-            )
-            .await?,
-        d: discord,
-    };
-
-    println!(
-        "Connected to Minecraft Server at {}:{}",
-        conf.rcon_host, conf.rcon_port
-    );
+    let mut com = combo::Combo::new(conf).await?;
+    let mut discord_conn = com.discord_connection()?;
 
     loop {
         match discord_conn.recv_event() {
@@ -40,25 +28,30 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
                     // println!("{:#?}", msg_parts);
                     match msg_parts.as_slice() {
                         &["!whitelist", username] => {
-                            com.send_text(
+                            com.send_rcon(
                                 &format!("whitelist add {}", username),
                                 message.channel_id,
-                                &format!("User '{}' has been added to the whitelist.", username),
                             )
                             .await
                         }
                         &["!list"] => com.send_rcon("list", message.channel_id).await,
                         &["!status"] => com.send_rcon("cofh tps", message.channel_id).await,
                         &["!say", ..] => drop(
-                            com.r
-                                .cmd(&format!(
+                            com.rcon_cmd(
+                                &format!(
                                     "say [Discord <{}>] {}",
                                     message.author.name,
                                     &msg_parts[1..].join(" ")
-                                ))
-                                .await,
+                                ),
+                                true,
+                            )
+                            .await,
                         ),
-                        _ => {}
+                        _ => {
+                            /* if com.is_old() && com.is_dead().await {
+                                com.rcon_reconnect(conf).await;
+                            }*/
+                        }
                     }
                 }
             }
@@ -82,12 +75,10 @@ async fn main_loop(conf: &Config) -> Result<(), Error> {
 
 #[tokio::main]
 async fn main() {
-    let conf = config::Config::load().expect("Failed to load config");
-    println!("{:#?}", conf);
     let mut attempt_timeout = 1;
 
     loop {
-        match main_loop(&conf).await {
+        match main_loop(&CONFIG).await {
             Ok(_) => {}
             Err(e) => {
                 eprintln!("{}", e);
