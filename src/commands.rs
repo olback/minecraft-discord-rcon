@@ -104,10 +104,10 @@ impl EventHandler for Commands {
 async fn player_list(config: &Config) -> Result<Vec<String>> {
     Ok(rcon_cmd(config, "list")
         .await?
-        .split(":")
+        .split(':')
         .skip(1)
         .collect::<String>()
-        .split(",")
+        .split(',')
         .filter_map(|u| {
             let trimmed = u.trim();
             if trimmed.is_empty() {

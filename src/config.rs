@@ -1,7 +1,6 @@
 use {
     serde::Deserialize,
     std::{fs, io},
-    toml,
 };
 
 #[derive(Debug, Deserialize, Clone)]
