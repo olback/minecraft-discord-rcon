@@ -1,17 +1,16 @@
 [package]
 name = "minecraft-discord-rcon"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Edwin Svensson <minecraft-discord-rcon@olback.net>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 lazy_static = "1.4"
-tokio = { version = "1.0", features = [ "full" ] }
-discord = { git = "https://github.com/SpaceManiac/discord-rs", default-features = false }
-rcon = "0.4"
+tokio = { version = "1", features = [ "full" ] }
+serenity = { version = "0.10", default-features = false, features = [ "client", "gateway", "rustls_backend", "model", "cache" ] }
+rcon = "0.5"
 serde = { version = "1.0", features = [ "derive" ] }
 toml = "0.5"
-async-recursion = "0.3"
-
+thiserror = "1.0"
