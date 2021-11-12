@@ -9,6 +9,7 @@ pub struct Config {
     pub rcon_port: u16,
     pub rcon_password: String,
     pub discord_token: String,
+    pub admins: Vec<u64>,
 }
 
 impl Config {

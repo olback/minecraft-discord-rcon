@@ -61,6 +61,16 @@ impl EventHandler for Commands {
                     Err(e) => try_reply!(msg.reply(ctx, format!("{:?}", e)).await),
                 }
             }
+            ["!mc", rest @ ..] => {
+                if self.config.admins.contains(&msg.author.id.0) {
+                    match rcon_cmd(&self.config, &rest.join(" ")).await {
+                        Ok(res) => try_reply!(msg.reply(ctx, res).await),
+                        Err(e) => try_reply!(msg.reply(ctx, format!("{:?}", e)).await),
+                    }
+                } else {
+                    try_reply!(msg.reply(ctx, "no :upside_down:").await)
+                }
+            }
             _ => {}
         }
     }
